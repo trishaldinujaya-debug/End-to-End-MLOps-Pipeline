@@ -1,0 +1,15 @@
+project:
+  name: "customer-churn-mlops"
+  version: "1.0.0"
+
+data:
+  raw_path: "data/raw/customer_churn.csv"
+  processed_path: "data/processed/customer_churn_processed.csv"
+
+model:
+  path: "models/churn_model.pkl"
+  target_column: "Churn"
+
+training:
+  test_size: 0.2
+  random_state: 42

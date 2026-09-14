@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+
+# MLflow
+mlruns/
+mlflow.db
+
+# DVC cache
+.dvc/cache/
+
+# Models
+models/*.pkl
+models/*.joblib
+
+# Processed datasets
+data/processed/
+
+# Raw dataset
+data/raw/*.csv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

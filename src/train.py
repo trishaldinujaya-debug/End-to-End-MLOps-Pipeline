@@ -1,0 +1,108 @@
+from pathlib import Path
+
+import joblib
+import pandas as pd
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+)
+
+from src.utils import setup_logger
+
+
+logger = setup_logger("model_training")
+
+
+TRAIN_PATH = "data/processed/train.csv"
+MODEL_PATH = "models/churn_model.pkl"
+
+
+def train_model():
+    """Train the customer churn prediction model."""
+
+    logger.info("Starting model training.")
+
+    # Load training data
+    train_df = pd.read_csv(TRAIN_PATH)
+
+    logger.info(
+        f"Training dataset loaded: {train_df.shape}"
+    )
+
+    # Separate features and target
+    X_train = train_df.drop(columns=["Churn"])
+    y_train = train_df["Churn"]
+
+    logger.info(
+        f"Training features: {X_train.shape}"
+    )
+
+    # Create model
+    model = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=12,
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    logger.info("Training Random Forest model...")
+
+    # Train
+    model.fit(X_train, y_train)
+
+    logger.info("Model training completed.")
+
+    # Training predictions
+    predictions = model.predict(X_train)
+
+    # Metrics
+    accuracy = accuracy_score(
+        y_train,
+        predictions
+    )
+
+    precision = precision_score(
+        y_train,
+        predictions
+    )
+
+    recall = recall_score(
+        y_train,
+        predictions
+    )
+
+    f1 = f1_score(
+        y_train,
+        predictions
+    )
+
+    logger.info(f"Training Accuracy: {accuracy:.4f}")
+    logger.info(f"Training Precision: {precision:.4f}")
+    logger.info(f"Training Recall: {recall:.4f}")
+    logger.info(f"Training F1 Score: {f1:.4f}")
+
+    # Create model directory
+    Path(MODEL_PATH).parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Save model
+    joblib.dump(
+        model,
+        MODEL_PATH
+    )
+
+    logger.info(
+        f"Model saved to: {MODEL_PATH}"
+    )
+
+    return model
+
+
+if __name__ == "__main__":
+    train_model()

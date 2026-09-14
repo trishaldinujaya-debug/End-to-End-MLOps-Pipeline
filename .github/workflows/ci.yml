@@ -26,6 +26,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Build production model pipeline
+        run: |
+          python -m src.build_pipeline
+
       - name: Run tests
         run: |
           python -m pytest -v

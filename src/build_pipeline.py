@@ -1,5 +1,6 @@
 import joblib
 import pandas as pd
+from pathlib import Path
 
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
@@ -13,7 +14,10 @@ logger = setup_logger("pipeline_builder")
 
 
 RAW_DATA_PATH = "data/raw/customer_churn.csv"
-PIPELINE_PATH = "models/churn_pipeline.pkl"
+PIPELINE_PATH = Path("models/churn_pipeline.pkl")
+
+# Create the models directory if it does not exist
+PIPELINE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 TARGET_COLUMN = "Churn"
 

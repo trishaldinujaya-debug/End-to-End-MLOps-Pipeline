@@ -1,5 +1,5 @@
 ﻿import argparse
-import subprocess
+from pathlib import Path
 
 import pandas as pd
 
@@ -8,9 +8,14 @@ from monitoring.drift_monitor import (
     CURRENT_DATA,
     calculate_psi,
 )
+from src.train import train_model
 
 
 DRIFT_THRESHOLD = 0.25
+
+CANDIDATE_MODEL = Path(
+    "models/churn_model_candidate.pkl"
+)
 
 
 def check_drift(current_data_path):
@@ -44,20 +49,39 @@ def check_drift(current_data_path):
     return max_psi >= DRIFT_THRESHOLD
 
 
-def retrain_model():
-    """Run the existing training pipeline."""
+def retrain_candidate():
+    """Train a new candidate model."""
 
-    print("\n===== MODEL RETRAINING =====")
+    print("\n===== CANDIDATE MODEL TRAINING =====")
 
-    result = subprocess.run(
-        ["python", "-m", "src.train"],
-        check=True,
+    train_model(
+        model_path=str(CANDIDATE_MODEL)
     )
 
-    return result.returncode == 0
+    if not CANDIDATE_MODEL.exists():
+        raise FileNotFoundError(
+            "Candidate model was not created."
+        )
+
+    print(
+        f"Candidate model created: {CANDIDATE_MODEL}"
+    )
+
+
+def promote_candidate():
+    """Evaluate and promote the candidate model."""
+
+    print("\n===== MODEL PROMOTION =====")
+
+    from monitoring.model_promotion import (
+        main as promotion_main
+    )
+
+    promotion_main()
 
 
 def main():
+
     parser = argparse.ArgumentParser(
         description="Automated model retraining based on data drift."
     )
@@ -73,17 +97,26 @@ def main():
     print("===== AUTOMATED RETRAINING CHECK =====")
     print(f"Current data: {args.current_data}")
 
-    drift_detected = check_drift(args.current_data)
+    drift_detected = check_drift(
+        args.current_data
+    )
 
     if drift_detected:
+
         print("\nSignificant drift detected.")
-        print("Starting model retraining...")
+        print("Starting candidate model retraining...")
 
-        retrain_model()
+        retrain_candidate()
 
-        print("\nModel retraining completed successfully.")
+        promote_candidate()
+
+        print(
+            "\nAutomated retraining and promotion "
+            "workflow completed."
+        )
 
     else:
+
         print("\nNo significant drift detected.")
         print("Retraining is not required.")
 

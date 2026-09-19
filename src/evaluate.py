@@ -1,4 +1,4 @@
-import joblib
+﻿import joblib
 import pandas as pd
 
 from sklearn.metrics import (
@@ -20,7 +20,7 @@ TEST_PATH = "data/processed/test.csv"
 MODEL_PATH = "models/churn_model.pkl"
 
 
-def evaluate_model():
+def evaluate_model(model_path=MODEL_PATH):
 
     logger.info("Starting model evaluation.")
 
@@ -30,8 +30,8 @@ def evaluate_model():
     X_test = test_df.drop(columns=["Churn"])
     y_test = test_df["Churn"]
 
-    model = joblib.load(MODEL_PATH)
-    logger.info("Trained model loaded.")
+    model = joblib.load(model_path)
+    logger.info(f"Model loaded from: {model_path}")
 
     predictions = model.predict(X_test)
     probabilities = model.predict_proba(X_test)[:, 1]
@@ -41,6 +41,14 @@ def evaluate_model():
     recall = recall_score(y_test, predictions)
     f1 = f1_score(y_test, predictions)
     roc_auc = roc_auc_score(y_test, probabilities)
+
+    metrics = {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "roc_auc": roc_auc,
+    }
 
     logger.info(f"Test Accuracy: {accuracy:.4f}")
     logger.info(f"Test Precision: {precision:.4f}")
@@ -64,6 +72,8 @@ def evaluate_model():
     print(classification_report(y_test, predictions))
 
     logger.info("Model evaluation completed.")
+
+    return metrics
 
 
 if __name__ == "__main__":

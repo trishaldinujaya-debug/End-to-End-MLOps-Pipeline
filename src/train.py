@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 import joblib
 import pandas as pd
@@ -21,19 +21,17 @@ TRAIN_PATH = "data/processed/train.csv"
 MODEL_PATH = "models/churn_model.pkl"
 
 
-def train_model():
+def train_model(model_path=MODEL_PATH):
     """Train the customer churn prediction model."""
 
     logger.info("Starting model training.")
 
-    # Load training data
     train_df = pd.read_csv(TRAIN_PATH)
 
     logger.info(
         f"Training dataset loaded: {train_df.shape}"
     )
 
-    # Separate features and target
     X_train = train_df.drop(columns=["Churn"])
     y_train = train_df["Churn"]
 
@@ -41,7 +39,6 @@ def train_model():
         f"Training features: {X_train.shape}"
     )
 
-    # Create model
     model = RandomForestClassifier(
         n_estimators=200,
         max_depth=12,
@@ -51,15 +48,12 @@ def train_model():
 
     logger.info("Training Random Forest model...")
 
-    # Train
     model.fit(X_train, y_train)
 
     logger.info("Model training completed.")
 
-    # Training predictions
     predictions = model.predict(X_train)
 
-    # Metrics
     accuracy = accuracy_score(
         y_train,
         predictions
@@ -85,20 +79,18 @@ def train_model():
     logger.info(f"Training Recall: {recall:.4f}")
     logger.info(f"Training F1 Score: {f1:.4f}")
 
-    # Create model directory
-    Path(MODEL_PATH).parent.mkdir(
+    Path(model_path).parent.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    # Save model
     joblib.dump(
         model,
-        MODEL_PATH
+        model_path
     )
 
     logger.info(
-        f"Model saved to: {MODEL_PATH}"
+        f"Model saved to: {model_path}"
     )
 
     return model

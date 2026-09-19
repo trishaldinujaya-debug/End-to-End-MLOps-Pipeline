@@ -3,6 +3,7 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from prometheus_client import Counter, Histogram, make_asgi_app
 
 from api.schemas import CustomerData
 
@@ -17,13 +18,40 @@ app = FastAPI(
 )
 
 
-# Load model when the API starts
+# -----------------------------
+# Prometheus Metrics
+# -----------------------------
+
+prediction_counter = Counter(
+    "churn_predictions_total",
+    "Total number of churn predictions",
+)
+
+prediction_histogram = Histogram(
+    "churn_prediction_duration_seconds",
+    "Time spent processing churn predictions",
+)
+
+
+# Expose Prometheus metrics at /metrics
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+
+# -----------------------------
+# Load Model
+# -----------------------------
+
 try:
     model = joblib.load(MODEL_PATH)
 except Exception as error:
     model = None
     print(f"Model loading failed: {error}")
 
+
+# -----------------------------
+# Root Endpoint
+# -----------------------------
 
 @app.get("/")
 def root():
@@ -33,6 +61,10 @@ def root():
         "version": "1.0.0",
     }
 
+
+# -----------------------------
+# Health Endpoint
+# -----------------------------
 
 @app.get("/health")
 def health():
@@ -48,6 +80,10 @@ def health():
     }
 
 
+# -----------------------------
+# Prediction Endpoint
+# -----------------------------
+
 @app.post("/predict")
 def predict(customer: CustomerData):
 
@@ -58,32 +94,36 @@ def predict(customer: CustomerData):
         )
 
     try:
-        data = {
-            "Age": customer.Age,
-            "Gender": customer.Gender,
-            "Tenure": customer.Tenure,
-            "Usage Frequency": customer.Usage_Frequency,
-            "Support Calls": customer.Support_Calls,
-            "Payment Delay": customer.Payment_Delay,
-            "Subscription Type": customer.Subscription_Type,
-            "Contract Length": customer.Contract_Length,
-            "Total Spend": customer.Total_Spend,
-            "Last Interaction": customer.Last_Interaction,
-        }
+        with prediction_histogram.time():
 
-        input_data = pd.DataFrame([data])
+            data = {
+                "Age": customer.Age,
+                "Gender": customer.Gender,
+                "Tenure": customer.Tenure,
+                "Usage Frequency": customer.Usage_Frequency,
+                "Support Calls": customer.Support_Calls,
+                "Payment Delay": customer.Payment_Delay,
+                "Subscription Type": customer.Subscription_Type,
+                "Contract Length": customer.Contract_Length,
+                "Total Spend": customer.Total_Spend,
+                "Last Interaction": customer.Last_Interaction,
+            }
 
-        prediction = model.predict(input_data)[0]
+            input_data = pd.DataFrame([data])
 
-        probability = model.predict_proba(input_data)[0][1]
+            prediction = model.predict(input_data)[0]
 
-        return {
-            "prediction": int(prediction),
-            "churn_probability": round(
-                float(probability),
-                4
-            ),
-        }
+            probability = model.predict_proba(input_data)[0][1]
+
+            prediction_counter.inc()
+
+            return {
+                "prediction": int(prediction),
+                "churn_probability": round(
+                    float(probability),
+                    4,
+                ),
+            }
 
     except Exception as error:
         raise HTTPException(

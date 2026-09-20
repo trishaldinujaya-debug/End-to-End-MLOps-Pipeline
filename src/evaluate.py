@@ -21,9 +21,12 @@ RAW_DATA_PATH = "data/raw/customer_churn.csv"
 MODEL_PATH = "models/churn_pipeline.pkl"
 TARGET_COLUMN = "Churn"
 
+TEST_SIZE = 0.2
+RANDOM_STATE = 42
 
-def evaluate_model(model_path=MODEL_PATH):
-    logger.info("Starting model evaluation.")
+
+def load_holdout_data():
+    """Create the deterministic untouched holdout dataset."""
 
     df = pd.read_csv(RAW_DATA_PATH)
 
@@ -37,12 +40,23 @@ def evaluate_model(model_path=MODEL_PATH):
     _, X_test, _, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,
-        random_state=42,
+        test_size=TEST_SIZE,
+        random_state=RANDOM_STATE,
         stratify=y,
     )
 
-    logger.info(f"Evaluation dataset: {X_test.shape}")
+    logger.info(f"Holdout dataset: {X_test.shape}")
+
+    return X_test, y_test
+
+
+def evaluate_model(model_path=MODEL_PATH, X_test=None, y_test=None):
+    """Evaluate a model on the shared untouched holdout dataset."""
+
+    logger.info("Starting model evaluation.")
+
+    if X_test is None or y_test is None:
+        X_test, y_test = load_holdout_data()
 
     model = joblib.load(model_path)
 

@@ -69,7 +69,7 @@ def check_drift(current_data_path):
 
 
 def build_candidate_pipeline():
-    """Build a complete candidate preprocessing + model pipeline."""
+    """Build a candidate preprocessing + model pipeline."""
 
     from sklearn.compose import ColumnTransformer
     from sklearn.ensemble import RandomForestClassifier
@@ -78,6 +78,7 @@ def build_candidate_pipeline():
         OneHotEncoder,
         StandardScaler,
     )
+    from sklearn.model_selection import train_test_split
 
     print(
         "\n===== CANDIDATE PIPELINE TRAINING ====="
@@ -100,6 +101,22 @@ def build_candidate_pipeline():
     )
 
     y = raw_data[TARGET_COLUMN]
+
+    X_train, X_holdout, y_train, y_holdout = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
+    )
+
+    print(
+        f"Candidate training data: {X_train.shape}"
+    )
+
+    print(
+        f"Untouched holdout data: {X_holdout.shape}"
+    )
 
     numerical_transformer = StandardScaler()
 
@@ -144,12 +161,12 @@ def build_candidate_pipeline():
     )
 
     print(
-        "Training candidate pipeline..."
+        "Training candidate pipeline on training data only..."
     )
 
     pipeline.fit(
-        X,
-        y,
+        X_train,
+        y_train,
     )
 
     CANDIDATE_PIPELINE.parent.mkdir(
@@ -174,6 +191,8 @@ def build_candidate_pipeline():
     print(
         CANDIDATE_PIPELINE
     )
+
+    return X_holdout, y_holdout
 
 
 def promote_candidate():

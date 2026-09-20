@@ -7,7 +7,7 @@ data:
   processed_path: "data/processed/customer_churn_processed.csv"
 
 model:
-  path: "models/churn_model.pkl"
+  path: "models/churn_pipeline.pkl"
   target_column: "Churn"
 
 training:

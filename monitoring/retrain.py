@@ -1,6 +1,7 @@
-﻿import argparse
+import argparse
 from pathlib import Path
 
+import joblib
 import pandas as pd
 
 from monitoring.drift_monitor import (
@@ -8,26 +9,36 @@ from monitoring.drift_monitor import (
     CURRENT_DATA,
     calculate_psi,
 )
-from src.train import train_model
+
+from src.build_pipeline import (
+    NUMERICAL_FEATURES,
+    CATEGORICAL_FEATURES,
+    TARGET_COLUMN,
+)
 
 
 DRIFT_THRESHOLD = 0.25
 
-CANDIDATE_MODEL = Path(
-    "models/churn_model_candidate.pkl"
+CANDIDATE_PIPELINE = Path(
+    "models/churn_pipeline_candidate.pkl"
 )
 
 
 def check_drift(current_data_path):
-    """Check whether significant drift exists."""
+    """Check whether significant data drift exists."""
 
-    reference_df = pd.read_csv(REFERENCE_DATA)
-    current_df = pd.read_csv(current_data_path)
+    reference_df = pd.read_csv(
+        REFERENCE_DATA
+    )
+
+    current_df = pd.read_csv(
+        current_data_path
+    )
 
     feature_columns = [
         column
         for column in reference_df.columns
-        if column != "Churn"
+        if column != TARGET_COLUMN
     ]
 
     max_psi = 0.0
@@ -35,46 +46,145 @@ def check_drift(current_data_path):
     print("===== DRIFT CHECK =====")
 
     for column in feature_columns:
+
         psi = calculate_psi(
             reference_df[column],
             current_df[column],
         )
 
-        print(f"Feature {column}: PSI={psi:.4f}")
+        print(
+            f"Feature {column}: PSI={psi:.4f}"
+        )
 
-        max_psi = max(max_psi, psi)
+        max_psi = max(
+            max_psi,
+            psi
+        )
 
-    print(f"\nMaximum PSI: {max_psi:.4f}")
+    print(
+        f"\nMaximum PSI: {max_psi:.4f}"
+    )
 
     return max_psi >= DRIFT_THRESHOLD
 
 
-def retrain_candidate():
-    """Train a new candidate model."""
+def build_candidate_pipeline():
+    """Build a complete candidate preprocessing + model pipeline."""
 
-    print("\n===== CANDIDATE MODEL TRAINING =====")
-
-    train_model(
-        model_path=str(CANDIDATE_MODEL)
+    from sklearn.compose import ColumnTransformer
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import (
+        OneHotEncoder,
+        StandardScaler,
     )
 
-    if not CANDIDATE_MODEL.exists():
+    print(
+        "\n===== CANDIDATE PIPELINE TRAINING ====="
+    )
+
+    raw_data = pd.read_csv(
+        "data/raw/customer_churn.csv"
+    )
+
+    print(
+        f"Raw dataset loaded: {raw_data.shape}"
+    )
+
+    raw_data = raw_data.drop(
+        columns=["CustomerID"]
+    )
+
+    X = raw_data.drop(
+        columns=[TARGET_COLUMN]
+    )
+
+    y = raw_data[TARGET_COLUMN]
+
+    numerical_transformer = StandardScaler()
+
+    categorical_transformer = OneHotEncoder(
+        handle_unknown="ignore",
+        sparse_output=False,
+    )
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            (
+                "numerical",
+                numerical_transformer,
+                NUMERICAL_FEATURES,
+            ),
+            (
+                "categorical",
+                categorical_transformer,
+                CATEGORICAL_FEATURES,
+            ),
+        ]
+    )
+
+    model = RandomForestClassifier(
+        n_estimators=200,
+        max_depth=12,
+        random_state=42,
+        n_jobs=-1,
+    )
+
+    pipeline = Pipeline(
+        steps=[
+            (
+                "preprocessor",
+                preprocessor,
+            ),
+            (
+                "model",
+                model,
+            ),
+        ]
+    )
+
+    print(
+        "Training candidate pipeline..."
+    )
+
+    pipeline.fit(
+        X,
+        y,
+    )
+
+    CANDIDATE_PIPELINE.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    joblib.dump(
+        pipeline,
+        CANDIDATE_PIPELINE,
+    )
+
+    if not CANDIDATE_PIPELINE.exists():
         raise FileNotFoundError(
-            "Candidate model was not created."
+            "Candidate pipeline was not created."
         )
 
     print(
-        f"Candidate model created: {CANDIDATE_MODEL}"
+        "Candidate production pipeline created:"
+    )
+
+    print(
+        CANDIDATE_PIPELINE
     )
 
 
 def promote_candidate():
-    """Evaluate and promote the candidate model."""
+    """Evaluate and promote the candidate pipeline."""
 
-    print("\n===== MODEL PROMOTION =====")
+    print(
+        "\n===== MODEL PROMOTION ====="
+    )
 
     from monitoring.model_promotion import (
-        main as promotion_main
+        main as promotion_main,
     )
 
     promotion_main()
@@ -83,7 +193,10 @@ def promote_candidate():
 def main():
 
     parser = argparse.ArgumentParser(
-        description="Automated model retraining based on data drift."
+        description=(
+            "Automated model retraining "
+            "based on data drift."
+        )
     )
 
     parser.add_argument(
@@ -94,8 +207,13 @@ def main():
 
     args = parser.parse_args()
 
-    print("===== AUTOMATED RETRAINING CHECK =====")
-    print(f"Current data: {args.current_data}")
+    print(
+        "===== AUTOMATED RETRAINING CHECK ====="
+    )
+
+    print(
+        f"Current data: {args.current_data}"
+    )
 
     drift_detected = check_drift(
         args.current_data
@@ -103,10 +221,15 @@ def main():
 
     if drift_detected:
 
-        print("\nSignificant drift detected.")
-        print("Starting candidate model retraining...")
+        print(
+            "\nSignificant drift detected."
+        )
 
-        retrain_candidate()
+        print(
+            "Starting candidate pipeline retraining..."
+        )
+
+        build_candidate_pipeline()
 
         promote_candidate()
 
@@ -117,8 +240,13 @@ def main():
 
     else:
 
-        print("\nNo significant drift detected.")
-        print("Retraining is not required.")
+        print(
+            "\nNo significant drift detected."
+        )
+
+        print(
+            "Retraining is not required."
+        )
 
 
 if __name__ == "__main__":

@@ -1,50 +1,69 @@
-﻿import shutil
+import shutil
 from pathlib import Path
 
 from src.evaluate import evaluate_model
 
 
-PRODUCTION_MODEL = Path("models/churn_model.pkl")
-CANDIDATE_MODEL = Path("models/churn_model_candidate.pkl")
+PRODUCTION_PIPELINE = Path(
+    "models/churn_pipeline.pkl"
+)
+
+CANDIDATE_PIPELINE = Path(
+    "models/churn_pipeline_candidate.pkl"
+)
 
 MIN_F1_SCORE = 0.95
 
 
 def evaluate_candidate():
-    """Evaluate the candidate model."""
+    """Evaluate the candidate production pipeline."""
 
-    print("\n===== CANDIDATE MODEL EVALUATION =====")
+    print(
+        "\n===== CANDIDATE PIPELINE EVALUATION ====="
+    )
 
     metrics = evaluate_model(
-        model_path=str(CANDIDATE_MODEL)
+        model_path=str(CANDIDATE_PIPELINE)
     )
 
     return metrics
 
 
 def promote_candidate():
-    """Replace the production model with the candidate model."""
+    """Promote the candidate pipeline to production."""
 
     shutil.copy2(
-        CANDIDATE_MODEL,
-        PRODUCTION_MODEL,
+        CANDIDATE_PIPELINE,
+        PRODUCTION_PIPELINE,
     )
 
-    print("\nCandidate model promoted to production.")
+    print(
+        "\nCandidate pipeline promoted to production."
+    )
+
+    print(
+        f"Production pipeline: {PRODUCTION_PIPELINE}"
+    )
 
 
 def main():
 
-    print("===== MODEL PROMOTION CHECK =====")
+    print(
+        "===== MODEL PROMOTION CHECK ====="
+    )
 
-    if not CANDIDATE_MODEL.exists():
+    if not CANDIDATE_PIPELINE.exists():
+
         raise FileNotFoundError(
-            f"Candidate model not found: {CANDIDATE_MODEL}"
+            "Candidate pipeline not found: "
+            f"{CANDIDATE_PIPELINE}"
         )
 
-    if not PRODUCTION_MODEL.exists():
+    if not PRODUCTION_PIPELINE.exists():
+
         raise FileNotFoundError(
-            f"Production model not found: {PRODUCTION_MODEL}"
+            "Production pipeline not found: "
+            f"{PRODUCTION_PIPELINE}"
         )
 
     candidate_metrics = evaluate_candidate()
@@ -52,11 +71,13 @@ def main():
     candidate_f1 = candidate_metrics["f1"]
 
     print(
-        f"\nCandidate F1 Score: {candidate_f1:.4f}"
+        f"\nCandidate F1 Score: "
+        f"{candidate_f1:.4f}"
     )
 
     print(
-        f"Minimum required F1: {MIN_F1_SCORE:.4f}"
+        f"Minimum required F1: "
+        f"{MIN_F1_SCORE:.4f}"
     )
 
     if candidate_f1 >= MIN_F1_SCORE:
@@ -66,12 +87,12 @@ def main():
     else:
 
         print(
-            "\nCandidate model did not meet "
+            "\nCandidate pipeline did not meet "
             "the minimum quality threshold."
         )
 
         print(
-            "Production model remains unchanged."
+            "Production pipeline remains unchanged."
         )
 
 

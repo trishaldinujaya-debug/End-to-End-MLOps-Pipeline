@@ -1,4 +1,4 @@
-﻿import joblib
+import joblib
 import pandas as pd
 
 from sklearn.metrics import (
@@ -11,29 +11,45 @@ from sklearn.metrics import (
     classification_report,
 )
 
+from sklearn.model_selection import train_test_split
 from src.utils import setup_logger
 
 
 logger = setup_logger("model_evaluation")
 
-TEST_PATH = "data/processed/test.csv"
-MODEL_PATH = "models/churn_model.pkl"
+RAW_DATA_PATH = "data/raw/customer_churn.csv"
+MODEL_PATH = "models/churn_pipeline.pkl"
+TARGET_COLUMN = "Churn"
 
 
 def evaluate_model(model_path=MODEL_PATH):
-
     logger.info("Starting model evaluation.")
 
-    test_df = pd.read_csv(TEST_PATH)
-    logger.info(f"Test dataset loaded: {test_df.shape}")
+    df = pd.read_csv(RAW_DATA_PATH)
 
-    X_test = test_df.drop(columns=["Churn"])
-    y_test = test_df["Churn"]
+    logger.info(f"Raw dataset loaded: {df.shape}")
+
+    df = df.drop(columns=["CustomerID"])
+
+    X = df.drop(columns=[TARGET_COLUMN])
+    y = df[TARGET_COLUMN]
+
+    _, X_test, _, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
+    )
+
+    logger.info(f"Evaluation dataset: {X_test.shape}")
 
     model = joblib.load(model_path)
+
     logger.info(f"Model loaded from: {model_path}")
 
     predictions = model.predict(X_test)
+
     probabilities = model.predict_proba(X_test)[:, 1]
 
     accuracy = accuracy_score(y_test, predictions)
